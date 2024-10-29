@@ -22,7 +22,7 @@ struct Blade {
 };
 
 // TODO: Add bindings to:
-// 1. Store the input blades
+// 1. Store the input blades    
 // 2. Write out the culled blades
 // 3. Write the total number of blades remaining
 
@@ -36,21 +36,83 @@ struct Blade {
 // 	  uint firstInstance; // = 0
 // } numBlades;
 
+layout(set = 2, binding = 0) buffer BladeBuffer {
+    Blade blades[];
+} bladeBuffer;
+
+layout(set = 2, binding = 1) buffer CulledBladeBuffer {
+    Blade blades[];
+} culledBladeBuffer;
+
+layout(set = 2, binding = 2) buffer NumBladesBuffer {
+    uint vertexCount;
+    uint instanceCount;
+    uint firstVertex;   // = 0
+    uint firstInstance; // = 0
+} numBlades;
+
 bool inBounds(float value, float bounds) {
     return (value >= -bounds) && (value <= bounds);
+}
+
+bool isInFrustum(vec4 pos) {
+    vec4 clipSpace = camera.proj * camera.view * pos;
+    return inBounds(clipSpace.x / clipSpace.w, 1.0) &&
+           inBounds(clipSpace.y / clipSpace.w, 1.0) &&
+           inBounds(clipSpace.z / clipSpace.w, 1.0);
 }
 
 void main() {
 	// Reset the number of blades to 0
 	if (gl_GlobalInvocationID.x == 0) {
-		// numBlades.vertexCount = 0;
+		//numBlades.vertexCount = 0;
 	}
 	barrier(); // Wait till all threads reach this point
 
     // TODO: Apply forces on every blade and update the vertices in the buffer
+    Blade blade = bladeBuffer.blades[gl_GlobalInvocationID.x];
+    vec3 bladePos = blade.v0.xyz;
+    float height = blade.v1.w;
+    float width = blade.v2.w;
+    float stiffness = blade.up.w;
+
+    // FORCE 1 : GRAVITY
+    vec4 D = vec4(0.0, -1.0, 0.0, 0.5); // D.xyz is the gravity direction, and D.w is the magnitude of acceleration
+    vec3 gE = normalize(D.xyz) * D.w;
+    vec3 f = cross(blade.up.xyz, vec3(1.0, 0.0, 0.0)); // Cross product to get the force direction
+    vec3 gF = (1.0/4.0) * gE.length() * f;
+    vec3 g = gE + gF;
+
+    // FORCE 2 : RECOVERY
+    vec3 iv2 = blade.v0.xyz + blade.up.xyz * height; // position before simulation
+    vec3 r = (iv2 - blade.v2.xyz) * stiffness;
+
+    // FORCE 3: WIND
+    vec3 windDir = vec3(sin(bladePos.x * totalTime), 0.0, cos(bladePos.y * totalTime));
+    float dirAligment = 1 - (dot(normalize(windDir), normalize(blade.v2.xyz - blade.v0.xyz)));
+    float heightRatio = dot((blade.v2.xyz - blade.v0.xyz), blade.up.xyz) / height;
+    float aligment = dirAligment * heightRatio;
+    vec3 windForce = windDir * aligment;
+
+    // Update blade position
+    vec3 tv2 = (g + r + windForce) * deltaTime;
+    blade.v2.xyz += windForce * deltaTime;
+    //blade.v2.xyz += tv2;
+
+    // Position Validation
+
 
 	// TODO: Cull blades that are too far away or not in the camera frustum and write them
 	// to the culled blades buffer
 	// Note: to do this, you will need to use an atomic operation to read and update numBlades.vertexCount
 	// You want to write the visible blades to the buffer without write conflicts between threads
+
+    // if (isInFrustum(blade.v0) && isInFrustum(blade.v1) && isInFrustum(blade.v2) && isInFrustum(blade.up)) {
+    //     // Atomically update the number of culled blades
+    //     uint index = atomicAdd(numBlades.vertexCount, 1);
+    //     culledBladeBuffer.blades[index] = blade;
+    // }
+
+    culledBladeBuffer.blades[gl_GlobalInvocationID.x] = blade;
+
 }
