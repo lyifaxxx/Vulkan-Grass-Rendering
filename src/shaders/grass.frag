@@ -18,7 +18,9 @@ void main() {
     // TODO: Compute fragment color
     vec4 tipColor = vec4(0.31, 0.74, 0.54, 1.0);
     vec4 baseColor = vec4(0.06, 0.42, 0.25, 1.0);
+    vec4 rootColor = vec4(0.02, 0.2, 0.12, 1.0);
     outColor = mix(baseColor, tipColor, uv.y);
+    //outColor = mix(outColor, rootColor, uv.y);
 
     //outColor = vec4(0.06, 0.42, 0.25, 1.0);
 }
