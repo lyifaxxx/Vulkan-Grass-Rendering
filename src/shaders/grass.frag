@@ -20,7 +20,7 @@ void main() {
     vec4 baseColor = vec4(0.06, 0.42, 0.25, 1.0);
     outColor = mix(baseColor, tipColor, uv.y);
 
-    float ambient = 0.1;
+    float ambient = 0.3;
     vec3 lightDir = normalize(vec3(1.0, 1.0, 0.0));
     float diff = max(dot(nor.xyz, lightDir), 0.0);
     outColor = outColor * (ambient + diff);
