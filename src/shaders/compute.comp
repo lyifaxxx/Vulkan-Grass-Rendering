@@ -150,8 +150,8 @@ void main() {
     bool distanceCullFlag = false;
 
     // Orientation Culling
-    vec3 viewDir = camera.view[2].xyz;
-    if(dot(viewDir, tangent) > 0.9) {
+    vec3 viewDir = normalize(vec3(inverse(camera.view) * vec4(0.0, 0.0, 0.0, 1.0)));
+    if(dot(viewDir, tangent) < 0.9) {
         oriCullFlag = true;
     }
 
@@ -162,11 +162,11 @@ void main() {
     }
 
     // Distance Culling
-    float culledDistance = 10.0;
+    float culledDistance = 20.0;
     int levelMax = 20;
-    vec3 cameraPos = vec3(inverse(camera.view) * vec4(0.0, 0.0, 0.0, 1.0));;
+    vec3 cameraPos = vec3(inverse(camera.view) * vec4(0.0, 0.0, 0.0, 1.0));
     float projDistance = length(v0 - cameraPos - up * dot(up , (v0 - cameraPos)));
-    if(mod(gl_GlobalInvocationID.x, levelMax) >= floor(levelMax * (1 - projDistance / culledDistance))) {
+    if((gl_GlobalInvocationID.x % levelMax) <= floor(levelMax * (1 - projDistance / culledDistance))) {
         distanceCullFlag = true;
     }
 
